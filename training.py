@@ -11,14 +11,12 @@ print("Random Seed: ", manualSeed)
 random.seed(manualSeed)
 torch.manual_seed(manualSeed)
 
-DATA_SIZE = 500000000
-BATCH_SIZE = 500
-BATCHES_PER_EPOCH = 500
-NUM_EPOCHS = 10000
+DATA_SIZE = -1 #placeholder
+BATCH_SIZE = -1 #placeholder
+NUM_EPOCHS = -1 #placeholder
+NUM_BATCHES = int(DATA_SIZE / BATCH_SIZE)
 
-N = 1024
-M = 4
-nf = 16
+nf = 16 #number of features: multiplier of channels in CNN
 
 lr = 0.0001
 b1 = 0.5
@@ -26,109 +24,26 @@ b2 = 0.999
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-cpu = torch.device("cpu")
+cpu = torch.device("cpu") #can't print from GPU
 
 folder = ""
 
-class AdaptiveBatchNorm1d(torch.nn.Module):
-    def __init__(self, num_features, eps=1e-5, momentum=0.1, affine=True):
-        super(AdaptiveBatchNorm1d, self).__init__()
-        self.bn = torch.nn.BatchNorm1d(num_features, eps, momentum, affine)
-        self.a = torch.nn.Parameter(torch.FloatTensor(1, 1, 1))
-        self.b = torch.nn.Parameter(torch.FloatTensor(1, 1, 1))
-
-    def forward(self, x):
-        return self.a * x + self.b * self.bn(x)
-
-class DepthwiseConv2d(torch.nn.Module):
-    def __init__(self, nin, nout):
-        super(DepthwiseConv2d, self).__init__()
-        self.depthwise = torch.nn.Conv2d(nin, nin, kernel_size=3, padding=1, groups=nin)
-        self.pointwise = torch.nn.Conv2d(nin, nout, kernel_size=1)
-
-    def forward(self, x):
-        out = self.depthwise(x)
-        out = self.pointwise(out)
-        return out
-
-def cartesian_to_polar(input):
-    return torch.stack((torch.abs(input), torch.angle(input)), dim=3)
-
-def polar_to_cartesian(mag, phase):
-    return torch.view_as_complex(torch.stack((mag[:, :, :]*torch.cos(phase[:, :, :]), mag[:, :, :]*torch.sin(phase[:, :, :])), dim=3))
-
-class DenoiseNetwork(torch.nn.Module):
+class CNN(torch.nn.Module):
 
     def __init__(self):
-        super(DenoiseNetwork, self).__init__()
-        self.s1 = torch.nn.Sequential(
-            torch.nn.Conv2d(1, nf, 3, 1, 1),
-            torch.nn.ReLU(True),
-        )
-        self.s2 = torch.nn.Sequential(
-            torch.nn.MaxPool2d(2),
-            DepthwiseConv2d(nf, nf * 2),
-            torch.nn.ReLU(True),
-        )
-        self.s3 = torch.nn.Sequential(
-            torch.nn.MaxPool2d(2),
-            DepthwiseConv2d(nf * 2, nf * 4),
-            torch.nn.ReLU(True),
+        super(CNN, self).__init__()
+        self.layers = torch.nn.sequential( #declaring all of our layers
+            #placeholder
         )
 
-        # self.s4 = torch.nn.Sequential(
-        #     torch.nn.Conv2d(nf * 4, nf * 2, 3, 1, 1),
-        #     torch.nn.LeakyReLU(0.2),
-        # )
-        self.s5 = torch.nn.Sequential(
-            torch.nn.Conv2d(nf, nf, 3, 1, 1),
-            torch.nn.ReLU(True),
-            torch.nn.Conv2d(nf, 1, 1, 1, 0),
-        )
-
-        self.upconv1 = torch.nn.Sequential(
-            torch.nn.ConvTranspose2d(nf * 4, nf * 2, 2, 2)
-        )
-        self.upconv2 = torch.nn.Sequential(
-            torch.nn.ConvTranspose2d(nf * 2, nf, 2, 2)
-        )
-
-    def fourier_to_conv(self, input):
-        input = input.view(input.size()[0], input.size()[2])
-        input = torch.stft(input, int(math.sqrt(N*M)-1), hop_length=int(math.sqrt(N*M)/2), return_complex=True)
-
-        input_polar = cartesian_to_polar(input)
-        input_magnitude = input_polar[:, :, :, 0].view(input_polar.size()[0], 1, input_polar.size()[1], input_polar.size()[2])
-        input_phase = input_polar[:, :, :, 1]
-
-        s1 = self.s1(input_magnitude)
-        s2 = self.s2(s1)
-        s3 = self.s3(s2)
-        s4 = self.upconv2(self.upconv1(s3))
-        output = self.s5(s4)
-
-        output = polar_to_cartesian(output.view(input_phase.size()), input_phase)
-        output = torch.istft(output, int(math.sqrt(N*M)-1), hop_length=int(math.sqrt(N*M)/2), length=N*M, return_complex=False)
-        return output.view(-1, 1, N*M)
-
-    def forward(self, input):
-        last_index = len(input.size())-1
-        if not input.size()[last_index] % N*M == 0:
-            raise Exception("Input not a length multiple of N*M.")
-        return self.fourier_to_conv(input)
+    def forward(self, input): #runs the next layer
+        return self.layers(input)
 
 
-def train_model(speech_data, noise_data):
-    model = DenoiseNetwork()
+def train_model(train_data):
+    model = CNN()
 
     current_milli_time = lambda: int(round(time.time() * 1000))
-
-    before_time = current_milli_time()
-    rand_input = torch.rand(10, 1, N*M)
-    for i in range(10):
-        model(rand_input[i:i+1, :, :])
-    after_time = current_milli_time()
-    print("Average Inference Time: "+str((after_time-before_time)/10.0))
 
     model = model.to(device)
 
@@ -136,10 +51,10 @@ def train_model(speech_data, noise_data):
 
     before_time = current_milli_time()
 
-    print("Beginning Training with N of " + str(N) + ".")
+    print("Beginning training")
     print("")
 
-    f = open(folder + "/during_training_performance.txt", "a")
+    f = open(folder + "/during_training_performance.txt", "a") #the file where we store the epoch loss
 
     for epoch in range(0, NUM_EPOCHS):
         os.mkdir(folder + "/epoch"+str(epoch+1))
@@ -149,50 +64,17 @@ def train_model(speech_data, noise_data):
 
         for batch in range(BATCHES_PER_EPOCH):
             opt.zero_grad()
-            speech_batch = []
-            noise_batch = []
-            noisy_batch = []
-            selection_indices = (torch.rand(BATCH_SIZE, 2) * (DATA_SIZE - N*M)).int()
-            for select in range(BATCH_SIZE):
-                speech_entry = speech_data[selection_indices[select, 0]:selection_indices[select, 0] + N*M].float()
-                speech_batch.append(speech_entry)
-                noise_entry = noise_data[selection_indices[select, 1]:selection_indices[select, 1] + N*M].float()
-                noise_batch.append(noise_entry)
-                w = torch.rand(1)
-                noisy_batch.append((w * speech_entry) + ((1 - w) * noise_entry))
-            speech_batch = torch.stack(speech_batch).view(BATCH_SIZE, 1, N*M)
-            noise_batch = torch.stack(noise_batch).view(BATCH_SIZE, 1, N*M)
-            noisy_batch = torch.stack(noisy_batch).view(BATCH_SIZE, 1, N*M)
+            #placeholder - where we portion the train data into batch data
 
-            output = model(noisy_batch.to(device))
-            loss = torch.nn.functional.smooth_l1_loss(output[:, :, N*M-N:], speech_batch[:, :, N*M-N:].to(device))
+            output = model(batch_input.to(device))
+            loss = #placeholder - loss function
             loss.backward()
             opt.step()
-            epoch_loss += loss.to(cpu).item() / float(BATCHES_PER_EPOCH)
+            epoch_loss += loss.to(cpu).item() / float(BATCHES_PER_EPOCH) #average of all the epoch losses in this patch
+            #.item() changes a pytorch tensor to a regular number, only on the CPU, can be expensive
 
-        with torch.no_grad():
-            speech_sample_w = speech_data[0:220500].view(1, 1, -1)
-            noise_sample_w = noise_data[0:220500].view(1, 1, -1)
-            speech_sample = torch.cat((torch.zeros(1, 1, N*(M-1)), speech_sample_w, torch.zeros(1, 1, 3756)), dim=2)
-            noise_sample = torch.cat((torch.zeros(1, 1, N*(M-1)), noise_sample_w, torch.zeros(1, 1, 3756)), dim=2)
-
-            w = 0.5
-            noisy_sample = (w * speech_sample) + ((1 - w) * noise_sample)
-            noisy_sample_w = (w * speech_sample_w) + ((1 - w) * noise_sample_w)
-
-            i = 0
-            outputs = []
-            while i < speech_sample.size()[2] - N*(M-1):
-                app = model(noisy_sample[:, :, i:i+N*M].to(device))[:, :, N*M-N:]
-                outputs.append(app)
-                i += N
-            output = torch.cat(outputs, dim=2)
-            output = output[:, :, N*(M-1):220500+N*(M-1)]
-
-            soundfile.write(folder + "/epoch"+str(epoch+1) + "/speech_sample.wav", speech_sample_w.view(-1).numpy(), 22050)
-            soundfile.write(folder + "/epoch"+str(epoch+1) + "/noise_sample.wav", noise_sample_w.view(-1).numpy(), 22050)
-            soundfile.write(folder + "/epoch"+str(epoch+1) + "/noisy_sample.wav", noisy_sample_w.view(-1).numpy(), 22050)
-            soundfile.write(folder + "/epoch"+str(epoch+1) + "/output_sample.wav", output.view(-1).to(cpu).numpy(), 22050)
+        with torch.no_grad(): #just evaluating it, don't create the graph with .no_grad()
+            #placeholder - epoch evaluation
 
         epoch_after_time = current_milli_time()
         seconds = math.floor((epoch_after_time - epoch_before_time) / 1000)
@@ -203,7 +85,7 @@ def train_model(speech_data, noise_data):
 
         f.write(str(epoch + 1)+" "+str(epoch_loss)+"\n")
 
-    after_time = current_milli_time()
+    after_time = current_milli_time() #time of entire process
 
     torch.save(model.state_dict(), folder + "/model.pt")
     print("")
@@ -222,6 +104,7 @@ if __name__ == "__main__":
     current_milli_time = lambda: int(round(time.time() * 1000))
     before_time = current_milli_time()
 
+    #sets up the trial folder
     if len(sys.argv) <= 1:
         files = os.listdir(".")
         m = [int(f[5:]) for f in files if len(f) > 5 and f[0:5] == "trial"]
@@ -229,7 +112,7 @@ if __name__ == "__main__":
             folder = "trial" + str(max(m) + 1)
         else:
             folder = "trial1"
-    else:
+    else: #Otherwise, if we want to set it up manually
         folder = sys.argv[1]
 
     os.mkdir(folder)
@@ -238,8 +121,7 @@ if __name__ == "__main__":
 
     print("Loading data...")
 
-    speech_data = torch.load("SPEECH.pt")
-    noise_data = torch.load("NOISE.pt")
+    train_data = torch.load("TRAIN.pt") #TRAIN.pt is the training data
 
     after_time = current_milli_time()
     seconds = math.floor((after_time - before_time) / 1000)
@@ -247,4 +129,4 @@ if __name__ == "__main__":
     seconds = seconds % 60
     print("Data loading took " + str(minutes) + " minute(s) " + str(seconds) + " second(s).")
 
-    model = train_model(speech_data, noise_data)
+    model = train_model(train_data)

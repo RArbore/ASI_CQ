@@ -11,8 +11,8 @@ print("Random Seed: ", manualSeed)
 random.seed(manualSeed)
 torch.manual_seed(manualSeed)
 
-DATA_SIZE = 3000
-VALID_DATA_SIZE = 100
+DATA_SIZE = 13000
+VALID_DATA_SIZE = 1000
 BATCH_SIZE = 10
 NUM_EPOCHS = 100
 NUM_BATCHES = int(DATA_SIZE / BATCH_SIZE)
@@ -102,9 +102,10 @@ def construct_quantized_images(output, batch):
 
     output_v = output.view(B, palette, 3).to(device)
 
-    distance = torch.zeros(B, palette, 256, 256).to(device)
-    for p in range(palette):
-        distance[:, p, :, :] = torch.sum((batch - output_v[:, p, :].view(B, 3, 1, 1).repeat(1, 1, 256, 256))**2, dim=1)
+    # distance = torch.zeros(B, palette, 256, 256).to(device)
+    distance = torch.sum((batch.view(B, 1, 3, 256, 256).repeat(1, palette, 1, 1, 1) - output_v[:, :, :].view(B, palette, 3, 1, 1).repeat(1, 1, 1, 256, 256))**2, dim=2)
+    # for p in range(palette):
+    #     distance[:, p, :, :] = torch.sum((batch - output_v[:, p, :].view(B, 3, 1, 1).repeat(1, 1, 256, 256))**2, dim=1)
     distance = torch.argmin(distance, dim=1)
     selection_one_hot = torch.nn.functional.one_hot(distance, num_classes=palette).permute(0, 3, 1, 2).view(B, palette, 1, 256, 256).repeat((1, 1, 3, 1, 1))
     quantized_batch = output_v.view(B, palette, 3, 1, 1).repeat(1, 1, 1, 256, 256)
@@ -130,18 +131,26 @@ def construct_soft_quantized_images(output, batch): #output: (B, palette * 3), b
     B = batch.size(0)
 
     output_v = output.view(B, palette, 3).to(device)
-    quantized_batch = torch.zeros(B, 3, 256, 256).to(device)
+    # quantized_batch = torch.zeros(B, 3, 256, 256).to(device)
 
-    distance = torch.zeros(B, palette, 256, 256).to(device)
-    for p in range(palette):
-        distance[:, p, :, :] = torch.exp(-torch.sum((batch - output_v[:, p, :].view(B, 3, 1, 1).repeat(1, 1, 256, 256))**2, dim=1)*distance_mag)
+    # distance = torch.zeros(B, palette, 256, 256).to(device)
+    # for p in range(palette):
+    #     distance[:, p, :, :] = torch.exp(-torch.sum((batch - output_v[:, p, :].view(B, 3, 1, 1).repeat(1, 1, 256, 256))**2, dim=1)*distance_mag)
+    distance = torch.exp(-torch.sum((batch.view(B, 1, 3, 256, 256).repeat(1, palette, 1, 1, 1) - output_v[:, :, :].view(B, palette, 3, 1, 1).repeat(1, 1, 1, 256, 256))**2, dim=2)*distance_mag)
     w = torch.sum(distance, dim=1) #(B, 256, 256)
-    for p in range(palette):
-        quantized_batch[:, :, :, :] += (distance[:, p, :, :]/w).view(B, 1, 256, 256).repeat((1, 3, 1, 1)) * output_v[:, p, :].view(B, 3, 1, 1).repeat(1, 1, 256, 256)
-    # if torch.sum(torch.isnan(quantized_batch)) > 0:
-    #     print("distance: ", distance, torch.mean(distance), torch.sum(torch.isnan(distance)))
-    #     print("w: ", w, torch.mean(w), torch.sum(torch.isnan(w)))
-    #     print(1/0)
+    quantized_batch = torch.sum((distance[:, :, :, :]/(w.view(B, 1, 256, 256).repeat(1, palette, 1, 1))).view(B, palette, 1, 256, 256).repeat((1, 1, 3, 1, 1)) * output_v[:, :, :].view(B, palette, 3, 1, 1).repeat(1, 1, 1, 256, 256), dim=1)
+    # for p in range(palette):
+    #     quantized_batch[:, :, :, :] += (distance[:, p, :, :]/w).view(B, 1, 256, 256).repeat((1, 3, 1, 1)) * output_v[:, p, :].view(B, 3, 1, 1).repeat(1, 1, 256, 256)
+    if torch.sum(torch.isnan(quantized_batch)) > 0:
+        # print("distance: ", distance, torch.mean(distance), torch.sum(torch.isnan(distance)))
+        # print("w: ", w, torch.mean(w), torch.sum(torch.isnan(w)), (w == 0).nonzero())
+        # print("quantized batch: ", quantized_batch, torch.mean(quantized_batch), torch.sum(torch.isnan(quantized_batch)), (torch.isnan(quantized_batch) == True).nonzero())
+        # print(distance[4, :, 120, 143])
+        # print(distance[4, :, 120, 255])
+        # print(batch[4, :, 120, 143], output[4, :].view(1, palette, 3))
+        # print(torch.min(batch), torch.max(batch))
+        print(1/0)
+    # print(torch.min(batch), torch.max(batch))
     return quantized_batch
             
 
@@ -169,7 +178,7 @@ def train_model(train_data):
         os.mkdir(folder + "/epoch"+str(epoch+1))
 
         epoch_loss = 0
-        test_loss = 0
+        valid_loss = 0
         epoch_before_time = current_milli_time()
 
         for batch in range(NUM_BATCHES):
@@ -182,6 +191,8 @@ def train_model(train_data):
             opt.step()
             epoch_loss += loss.to(cpu).item() / float(NUM_BATCHES) #average of all the epoch losses in this patch
             #.item() changes a pytorch tensor to a regular number, only on the CPU, can be expensive
+            if (math.isnan(epoch_loss)):
+                print("NaN!")
 
         with torch.no_grad(): #just evaluating it, don't create the graph with .no_grad()
             batch_input = train_data[DATA_SIZE:DATA_SIZE+saved_images_per_epoch].to(device)
@@ -193,24 +204,24 @@ def train_model(train_data):
                 save_image(batch_input[i], folder + "/epoch"+str(epoch+1) + "/original_image_"+str(i)+".png")
                 save_image(quantized_batch[i], folder + "/epoch"+str(epoch+1) + "/quantized_image_"+str(i)+".png")
 
-            for test_batch in range(int(VALID_DATA_SIZE/BATCH_SIZE)):
-                batch_input = train_data[DATA_SIZE + (test_batch * BATCH_SIZE):DATA_SIZE + ((test_batch + 1) * BATCH_SIZE)].to(device)
+            for valid_batch in range(int(VALID_DATA_SIZE/BATCH_SIZE)):
+                batch_input = train_data[DATA_SIZE + (valid_batch * BATCH_SIZE):DATA_SIZE + ((valid_batch + 1) * BATCH_SIZE)].to(device)
                 output = model(batch_input)
                 quantized_batch = construct_quantized_images(output, batch_input)
-                test_loss += torch.mean((quantized_batch - batch_input)**2)/float(VALID_DATA_SIZE/BATCH_SIZE)       
+                valid_loss += torch.mean((quantized_batch - batch_input)**2).to(cpu).item() / float(VALID_DATA_SIZE/BATCH_SIZE)       
 
         epoch_after_time = current_milli_time()
         seconds = math.floor((epoch_after_time - epoch_before_time) / 1000)
         minutes = math.floor(seconds / 60)
         seconds = seconds % 60
 
-        print("["+str(epoch + 1)+"]   Loss : "+str(epoch_loss)+"   Validation Loss : "+str(test_loss.to(cpu).item())+"   Took "+str(minutes)+" minute(s) and "+str(seconds)+" second(s).")
+        print("["+str(epoch + 1)+"]   Loss : "+str(epoch_loss)+"   Validation Loss : "+str(valid_loss)+"   Took "+str(minutes)+" minute(s) and "+str(seconds)+" second(s).")
 
-        f.write(str(epoch + 1)+" "+str(epoch_loss)+"\n")
+        f.write(str(epoch + 1)+" "+str(epoch_loss)+" "+str(valid_loss)+"\n")
 
     after_time = current_milli_time() #time of entire process
 
-    torch.save(model.state_dict(), folder + "/model.pt")
+    torch.save(model.to(cpu).state_dict(), folder + "/model.pt")
     print("")
     f.close()
 

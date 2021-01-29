@@ -1,5 +1,6 @@
 from torchvision import transforms
 import random
+import resnet
 import torch
 import time
 import math
@@ -160,6 +161,7 @@ def SSELoss(output, batch):
 
 def train_model(train_data):
     model = CNN()
+    # model = resnet.resnet(3, palette * 3)
 
     current_milli_time = lambda: int(round(time.time() * 1000))
 
@@ -185,7 +187,7 @@ def train_model(train_data):
             opt.zero_grad()
             batch_input = train_data[(batch * BATCH_SIZE):((batch + 1) * BATCH_SIZE)].to(device)
 
-            output = model(batch_input)
+            output = model(batch_input*2-1)
             loss = SSELoss(output, batch_input)
             loss.backward()
             opt.step()

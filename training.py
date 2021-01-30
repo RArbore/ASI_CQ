@@ -185,6 +185,7 @@ def train_model(train_data):
 
         for batch in range(NUM_BATCHES):
             opt.zero_grad()
+            model = model.train()
             batch_input = train_data[(batch * BATCH_SIZE):((batch + 1) * BATCH_SIZE)].to(device)
 
             output = model(batch_input*2-1)
@@ -197,6 +198,7 @@ def train_model(train_data):
                 print("NaN!")
 
         with torch.no_grad(): #just evaluating it, don't create the graph with .no_grad()
+            model = model.eval()
             batch_input = train_data[DATA_SIZE:DATA_SIZE+saved_images_per_epoch].to(device)
             output = model(batch_input)
             quantized_batch = construct_quantized_images(output, batch_input)

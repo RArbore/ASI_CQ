@@ -161,8 +161,8 @@ def SSELoss(output, batch):
     return torch.mean((quantized_batch - batch)**2)
 
 def train_model(train_data):
-    # model = CNN()
-    model = resnet.resnet(3, palette * 3)
+    model = CNN()
+    # model = resnet.resnet(3, palette * 3)
 
     current_milli_time = lambda: int(round(time.time() * 1000))
 

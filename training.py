@@ -260,7 +260,7 @@ if __name__ == "__main__":
 
     print("Loading data...")
 
-    train_data = torch.load("AUG_aquarium.pt") #(60100, 3, 256, 256)
+    train_data = torch.clamp(torch.load("AUG_aquarium.pt"), 0, 1) #(60100, 3, 256, 256)
     # train_data = torch.cat((torch.load("TRAIN_aquarium.pt"), torch.load("TRAIN_badlands.pt"), torch.load("TRAIN_baseball_field.pt")), dim=0) #TRAIN_x.pt is the data, size: (45000, 3, 256, 256)
 
     after_time = current_milli_time()

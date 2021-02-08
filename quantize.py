@@ -46,7 +46,7 @@ def kmeans():
     return kmeans(X=imageTensor, num_clusters=num_clusters, distance='euclidean')
 
 
-#torch.save(manual(['#284168','#19243e','#283227','#1f5a55','#455622','#6a95af','#17271d','#fffb9e','#9d852b','#1f2b42','#1f2b42','#604d23','#294c3c','#d0e1d3']), 'manual.pt')
+torch.save(manual(['#284168','#19243e','#283227','#1f5a55','#455622','#6a95af','#17271d','#fffb9e','#9d852b','#1f2b42','#1f2b42','#604d23','#294c3c','#d0e1d3']), 'manual.pt')
 palette_ids, palette = torch.load('manual.pt')
 print(palette,palette_ids)
 

@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import os
 
-dirs = ["jpgs/b/badlands", "jpgs/b/baseball_field"]
+dirs = ["imagesPlaces205_resize/data/vision/torralba/deeplearning/images256/a/aquarium"]
 
 for dir in dirs:
     tensor_list = []
@@ -18,4 +18,4 @@ for dir in dirs:
 
     data = torch.stack(tensor_list).float().detach()
     print(data.size())
-    torch.save(data, "TRAIN_"+dir.split("/")[2]+".pt")
+    torch.save(data, "TRAIN_"+dir.split("/")[7]+".pt")

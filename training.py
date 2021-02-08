@@ -12,8 +12,9 @@ print("Random Seed: ", manualSeed)
 random.seed(manualSeed)
 torch.manual_seed(manualSeed)
 
-DATA_SIZE = 43000
-VALID_DATA_SIZE = 1000
+NUM_AUGS = 3
+DATA_SIZE = 15000 * (NUM_AUGS + 1)
+VALID_DATA_SIZE = 100
 BATCH_SIZE = 10
 NUM_EPOCHS = 100
 NUM_BATCHES = int(DATA_SIZE / BATCH_SIZE)
@@ -160,8 +161,8 @@ def SSELoss(output, batch):
     return torch.mean((quantized_batch - batch)**2)
 
 def train_model(train_data):
-    model = CNN()
-    # model = resnet.resnet(3, palette * 3)
+    # model = CNN()
+    model = resnet.resnet(3, palette * 3)
 
     current_milli_time = lambda: int(round(time.time() * 1000))
 
@@ -259,8 +260,8 @@ if __name__ == "__main__":
 
     print("Loading data...")
 
-    train_data = torch.cat((torch.load("TRAIN_aquarium.pt"), torch.load("TRAIN_badlands.pt"), torch.load("TRAIN_baseball_field.pt")), dim=0) #TRAIN_x.pt is the data, size: (45000, 3, 256, 256)
-    train_data = torch.clamp(train_data[torch.randperm(train_data.size(0))], 0, 1)
+    train_data = torch.load("AUG_aquarium.pt") #(60100, 3, 256, 256)
+    # train_data = torch.cat((torch.load("TRAIN_aquarium.pt"), torch.load("TRAIN_badlands.pt"), torch.load("TRAIN_baseball_field.pt")), dim=0) #TRAIN_x.pt is the data, size: (45000, 3, 256, 256)
 
     after_time = current_milli_time()
     seconds = math.floor((after_time - before_time) / 1000)

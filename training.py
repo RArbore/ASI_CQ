@@ -12,7 +12,7 @@ print("Random Seed: ", manualSeed)
 random.seed(manualSeed)
 torch.manual_seed(manualSeed)
 
-NUM_AUGS = 3
+NUM_AUGS = 0
 DATA_SIZE = 15000 * (NUM_AUGS + 1)
 VALID_DATA_SIZE = 100
 BATCH_SIZE = 10
@@ -45,20 +45,29 @@ class CNN(torch.nn.Module):
         super(CNN, self).__init__()
         self.conv = torch.nn.Sequential( #declaring all of our conv layers, Input: (B, 3, 256, 256), Output: (B, nf*8, 1, 1)
             torch.nn.Conv2d(3, nf, 3, 1, 1),
+            torch.nn.Dropout2d(0.5),
+            # torch.nn.BatchNorm2d(nf),
             torch.nn.LeakyReLU(0.2),
             torch.nn.MaxPool2d(4),
             torch.nn.Conv2d(nf, nf * 2, 3, 1, 1),
+            torch.nn.Dropout2d(0.5),
+            # torch.nn.BatchNorm2d(nf * 2),
             torch.nn.LeakyReLU(0.2),
             torch.nn.MaxPool2d(4),
             torch.nn.Conv2d(nf * 2, nf * 4, 3, 1, 1),
+            torch.nn.Dropout2d(0.5),
+            # torch.nn.BatchNorm2d(nf * 4),
             torch.nn.LeakyReLU(0.2),
             torch.nn.MaxPool2d(4),
             torch.nn.Conv2d(nf * 4, nf * 8, 3, 1, 1),
+            torch.nn.Dropout2d(0.5),
+            # torch.nn.BatchNorm2d(nf * 8),
             torch.nn.LeakyReLU(0.2),
             torch.nn.MaxPool2d(4),
         )
         self.linear = torch.nn.Sequential( #declaring all of our linear layers, Input: (B, nf*8), Output: (B, palette * 3)
             torch.nn.Linear(nf * 8, nf * 4),
+            torch.nn.Dropout(0.5),
             torch.nn.LeakyReLU(0.2),
             torch.nn.Linear(nf * 4, palette * 3),
             torch.nn.Tanh(),
@@ -260,7 +269,7 @@ if __name__ == "__main__":
 
     print("Loading data...")
 
-    train_data = torch.clamp(torch.load("AUG_aquarium.pt"), 0, 1) #(60100, 3, 256, 256)
+    train_data = torch.clamp(torch.load("TRAIN_aquarium.pt"), 0, 1) #(15100, 3, 256, 256)
     # train_data = torch.cat((torch.load("TRAIN_aquarium.pt"), torch.load("TRAIN_badlands.pt"), torch.load("TRAIN_baseball_field.pt")), dim=0) #TRAIN_x.pt is the data, size: (45000, 3, 256, 256)
 
     after_time = current_milli_time()

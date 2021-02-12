@@ -45,7 +45,11 @@ def validLoss(original, quantized):
 
 # Setting parameters
 num_clusters = 64
-tolerance = 0.0001
+iteration_limit = 1000
+tolerance = 0
+
+PVsAfterDecimal = 10
+saveResults = True
 
 # Converting image file(s) into Tensor([# of files, 3, 256, 256])
 imagesList = []
@@ -75,10 +79,12 @@ if os.path.exists('saved.pt'):
 # Performing chosen method to get mappings and palette
 for image in range(startingIndex, imagesTensor.size(0)):
     PFimage = pixelsForm(imagesTensor[image])
-    mapTensor[image], paletteTensor[image] = kmeans(X=PFimage, num_clusters=num_clusters, distance='euclidean', tol=tolerance, image=image)
-    torch.save((mapTensor, paletteTensor), 'saved.pt') #mapTensor = Tensor(# of images, 256**2), paletteTensor = Tensor(images, # of colors)
-    print('loss for image %s: %s\n' % (image, validLoss(imagesTensor[image], pixel_mapping(mapTensor[image].unsqueeze(0), paletteTensor[image].unsqueeze(0)).squeeze().squeeze(0))))
-print('finished k-means for all images')
+    mapTensor[image], paletteTensor[image] = kmeans(X=PFimage, num_clusters=num_clusters, distance='euclidean', iteration_limit=iteration_limit, tol=tolerance, image=image)
+    if saveResults:
+        torch.save((mapTensor, paletteTensor), 'saved.pt') #mapTensor = Tensor(# of images, 256**2), paletteTensor = Tensor(images, # of colors)
+    quantizedImagesTensor = pixel_mapping(mapTensor[image].unsqueeze(0), paletteTensor[image].unsqueeze(0)).squeeze().squeeze(0)
+    print('loss for image %s: %s\n' % (image, round(validLoss(imagesTensor[image], quantizedImagesTensor), PVsAfterDecimal)))
+print('finished k-means for all images. Calculating loss...')
 # imageTensor = imagesTensor[0] #Tensor(3, 256, 256)
 # torch.save(manual(imageTensor,['#101918','#294c3c','#1b3441','#284b66','#576e48','#baab47','#39341d','#604d23','#5c89ae','#d0e1d3']), 'manual.pt')
 # palette_ids, palette = torch.load('manual.pt')
@@ -87,12 +93,12 @@ print('finished k-means for all images')
 #Pixel mapping and calcuating validation loss
 quantizedImages = pixel_mapping(mapTensor, paletteTensor)
 batchValidLoss = validLoss(imagesTensor, quantizedImages)
-print(f'validation loss for entire batch: {batchValidLoss}\n')
+print('validation loss for entire batch: %s\n' % (round(batchValidLoss,PVsAfterDecimal)))
 
 #Plotting Quantized Images
 if input('display images (y/n)?') == 'y':
     plt.tight_layout()
     for quantizedImage in range(len(quantizedImages)):
-        print(f'displaying quantized image {quantizedImage}')
         plt.imshow((quantizedImages[quantizedImage].permute(1, 2, 0).numpy()*255).astype(np.uint8))
         plt.show() #imshow puts stff on the plot, show actually displays the plot
+        input(f'displaying quantized image {quantizedImage} (enter for next)')

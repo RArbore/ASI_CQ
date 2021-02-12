@@ -15,9 +15,15 @@ def initialize(X, num_clusters):
     num_samples = len(X)
     initial_state = torch.zeros(num_clusters, 3)
     #Added while loop to the original kmeans package code so that it never picks an initial state with duplicate datapoints.
+    whileIteration = 0
     while sum(checkDuplicates(initial_state)) > num_clusters:
         indices = np.random.choice(num_samples, num_clusters, replace=False)
         initial_state = X[indices]
+        whileIteration += 1
+        if whileIteration > 10000:
+            if input('Failed to find valid initial palette after 10000 attempts. Debugger?(y/n)') =='y':
+                import pdb; pdb.set_trace()
+            whileIteration = 0
     return initial_state
 
 
@@ -26,7 +32,8 @@ def kmeans(
         num_clusters,
         image,
         distance='euclidean',
-        tol=1e-4,
+        tol=0,
+        iteration_limit=1000,
         device=torch.device('cpu')
 ):
     """
@@ -34,7 +41,8 @@ def kmeans(
     :param X: (torch.tensor) matrix
     :param num_clusters: (int) number of clusters
     :param distance: (str) distance [options: 'euclidean', 'cosine'] [default: 'euclidean']
-    :param tol: (float) threshold [default: 0.0001]
+    :param tol: (float) threshold [default: 0]
+    :param iteration_limit: (int) iteration limit [default: 1,000]
     :param device: (torch.device) device [default: cpu]
     :return: (torch.tensor, torch.tensor) cluster ids, cluster centers
     """
@@ -86,10 +94,12 @@ def kmeans(
         tqdm_meter.set_postfix(
             iteration=f'{iteration}',
             center_shift=f'{center_shift ** 2:0.6f}',
-            tol=f'{tol:0.6f}'
+            iteration_limit=f'{iteration_limit}',
+            tolerance=f'{tol}'
         )
         tqdm_meter.update()
-        if center_shift ** 2 < tol:
+        #Added iteration limit
+        if center_shift ** 2 <= tol or iteration > iteration_limit:
             break
 
     return choice_cluster.cpu(), initial_state.cpu()

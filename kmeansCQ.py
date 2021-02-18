@@ -49,15 +49,17 @@ iteration_limit = 1000
 tolerance = 0
 
 PVsAfterDecimal = 10
-saveResults = True
+saveResults = False
 
 # Converting image file(s) into Tensor([# of files, 3, 256, 256])
-imagesList = []
-path = 'testImages/'
-directory = os.listdir(path)
-for file in directory:
-    imagesList.append(transforms.ToTensor()(Image.open(path+file)))
-imagesTensor = pad_sequence(imagesList).permute(1,0,2,3) #Tensor([# of files, 3, 256, 256])
+# imagesList = []
+# path = 'testImages/'
+# directory = os.listdir(path)
+# for file in directory:
+#     imagesList.append(transforms.ToTensor()(Image.open(path+file)))
+# imagesTensor = pad_sequence(imagesList).permute(1,0,2,3) #Tensor([# of files, 3, 256, 256])
+
+imagesTensor = torch.clamp(torch.load("TRAIN_aquarium.pt"), 0, 1)[15000:15100]
 
 # Initializing (mapTensor, paletteTensor) with previous results if they exist, or zeros
 mapTensor = torch.zeros(imagesTensor.size(0), 256**2)

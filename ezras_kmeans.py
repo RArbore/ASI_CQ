@@ -16,14 +16,14 @@ def initialize(X, num_clusters):
     initial_state = torch.zeros(num_clusters, 3)
     #Added while loop to the original kmeans package code so that it never picks an initial state with duplicate datapoints.
     whileIteration = 0
-    while sum(checkDuplicates(initial_state)) > num_clusters:
+    while sum(checkDuplicates(initial_state)) > num_clusters or whileIteration <= 10000:
         indices = np.random.choice(num_samples, num_clusters, replace=False)
         initial_state = X[indices]
         whileIteration += 1
-        if whileIteration > 10000:
-            if input('Failed to find valid initial palette after 10000 attempts. Debugger?(y/n)') =='y':
-                import pdb; pdb.set_trace()
-            whileIteration = 0
+        # if whileIteration > 10000:
+        #     if input('Failed to find valid initial palette after 10000 attempts. Debugger?(y/n)') =='y':
+        #         import pdb; pdb.set_trace()
+        #     whileIteration = 0
     return initial_state
 
 

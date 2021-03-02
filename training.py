@@ -45,23 +45,15 @@ class CNN(torch.nn.Module):
         super(CNN, self).__init__()
         self.conv = torch.nn.Sequential( #declaring all of our conv layers, Input: (B, 3, 256, 256), Output: (B, nf*8, 1, 1)
             torch.nn.Conv2d(3, nf, 3, 1, 1),
-            # torch.nn.Dropout2d(0.5),
-            # torch.nn.BatchNorm2d(nf),
             torch.nn.LeakyReLU(0.2),
             torch.nn.MaxPool2d(4),
             torch.nn.Conv2d(nf, nf * 2, 3, 1, 1),
-            # torch.nn.Dropout2d(0.5),
-            # torch.nn.BatchNorm2d(nf * 2),
             torch.nn.LeakyReLU(0.2),
             torch.nn.MaxPool2d(4),
             torch.nn.Conv2d(nf * 2, nf * 4, 3, 1, 1),
-            # torch.nn.Dropout2d(0.5),
-            # torch.nn.BatchNorm2d(nf * 4),
             torch.nn.LeakyReLU(0.2),
             torch.nn.MaxPool2d(4),
             torch.nn.Conv2d(nf * 4, nf * 8, 3, 1, 1),
-            # torch.nn.Dropout2d(0.5),
-            # torch.nn.BatchNorm2d(nf * 8),
             torch.nn.LeakyReLU(0.2),
             torch.nn.MaxPool2d(4),
         )
@@ -72,31 +64,6 @@ class CNN(torch.nn.Module):
             torch.nn.Linear(nf * 4, palette * 3),
             torch.nn.Tanh(),
         )
-
-    #     self.seq1 = torch.nn.Sequential(
-    #         torch.nn.Conv2d(3, nf, 3, 2, 0),
-    #         torch.nn.ReLU(True),
-    #         torch.nn.Conv2d(nf, nf, 3, 1, 0),
-    #         torch.nn.ReLU(True),
-    #         torch.nn.Conv2d(nf, nf * 2, 3, 1, 1),
-    #         torch.nn.ReLU(True),
-    #         torch.nn.MaxPool2d(3, 2),
-    #         torch.nn.Conv2d(nf * 2, nf * 2, 3, 1, 0),
-    #         torch.nn.ReLU(True),
-    #         torch.nn.Conv2d(nf * 2, nf * 2, 3, 2, 0),
-    #         torch.nn.ReLU(True),
-    #         torch.nn.Conv2d(nf * 2, nf * 4, 3, 1, 0),
-    #         torch.nn.ReLU(True),
-    #         torch.nn.MaxPool2d(8),
-    #     )
-    #     self.seq2 = torch.nn.Sequential(
-    #         torch.nn.Linear(576, palette * 3),
-    #         torch.nn.Tanh(),
-    #     )
-
-    # def forward(self, input): #runs input through layers of model, returns output
-    #     output = (self.seq2(self.seq1(input).view(input.size(0), -1))+1)/2
-    #     return output
 
     def forward(self, input): #runs input through layers of model, returns output
         conv_output = self.conv(input)

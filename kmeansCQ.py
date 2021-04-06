@@ -5,15 +5,17 @@ import os
 from PIL import Image
 from torch.nn.utils.rnn import pad_sequence
 from torchvision import transforms
-from ezras_kmeans import kmeans
+# from ezras_kmeans import kmeans
+from fast_kmeans import kmeans
+from fast_kmeans import pairwise_distance
 import math
+import time
 
+def pixelsForm(tensor, imagesSize): # Tensor(3, 256, 256) -> Tensor(65536, 3)
+    return tensor.permute(1, 2, 0).reshape(np.prod(imagesSize), 3)
 
-def pixelsForm(tensor): # Tensor(3, 256, 256) -> Tensor(65536, 3)
-    return tensor.permute(1, 2, 0).view(256**2, 3)
-
-def imageForm(tensor): # Tensor(65536, 3) -> Tensor(3, 256, 256)
-    return tensor.view(256, 256, 3).permute(2, 0, 1)
+def imageForm(tensor, imagesSize): # Tensor(65536, 3) -> Tensor(3, 256, 256)
+    return tensor.view(imagesSize[0], imagesSize[1], 3).permute(2, 0, 1)
 
 def hex_to_I(hex): #hex -> [0,1]
     return int(hex,16)/256
@@ -24,7 +26,7 @@ def manual(imageTensor, manual_palette_input):
     for color in manual_palette_input:
         palette[manual_palette_input.index(color)] = torch.Tensor([hex_to_I(color[1:3]), hex_to_I(color[3:5]), hex_to_I(color[5:])])
     # Finds the closest color in the palette for each pixel
-    imageTensor = pixelsForm(imageTensor)
+    imageTensor = pixelsForm(imageTensor, (256,256))
     palette_ids = torch.zeros(len(imageTensor))
     for pixel in range(len(imageTensor)):
         closest_id, closest = (0, math.inf)
@@ -36,56 +38,100 @@ def manual(imageTensor, manual_palette_input):
         palette_ids[pixel] = torch.Tensor([closest_id])
     return palette_ids, palette #palette_ids = Tensor(65536), palette = Tensor(# of colors)
 
-def pixel_mapping(mapTensor, paletteTensor):
-    return torch.stack([imageForm(torch.stack([paletteTensor[imageNum][pixel] for pixel in mapTensor[imageNum].int()])) for imageNum in range(mapTensor.size(0))]) #returns Tensor(# of images, 3, 256, 256)
+def pixel_mapping(imageTensor, paletteTensor):
+    # return torch.stack([imageForm(torch.stack([paletteTensor[imageNum][pixel] for pixel in mapTensor[imageNum].int()]), imagesSize) for imageNum in range(mapTensor.size(0))]) #returns Tensor(# of images, 3, 256, 256)
+    dis = pairwise_distance(imageTensor, paletteTensor)
+    closest_cluster = torch.argmin(dis, dim=1)
+    one_hot = (closest_cluster.unsqueeze(dim=1) == torch.arange(paletteTensor.size(0)).reshape(1, paletteTensor.size(0))).float()
+    image = torch.stack((torch.matmul(one_hot.float(), paletteTensor[:,0].reshape(-1,1)),
+                         torch.matmul(one_hot.float(), paletteTensor[:,1].reshape(-1,1)),
+                         torch.matmul(one_hot.float(), paletteTensor[:,2].reshape(-1,1))),dim=2).squeeze()
+    return image
 
 def validLoss(original, quantized):
     return float(torch.mean((original-quantized)**2))
 
+current_milli_time = lambda: int(round(time.time() * 1000))
+
+def logTime(logString, before_time, after_time):
+    seconds = math.floor((after_time - before_time) / 1000)
+    minutes = math.floor(seconds / 60)
+    seconds = seconds % 60
+    return("%s %s minute(s) %s second(s)." % (logString, str(minutes), str(seconds)))
+
+def preprocess(image):
+    imagePalette = []
+    frequencyTensor = []
+    sortedImagePalette = sorted(image.tolist())
+    current = []
+    for index in range(len(sortedImagePalette)):
+        if current == sortedImagePalette[index]:
+            frequencyTensor[-1] += 1
+        else:
+            imagePalette.append(sortedImagePalette[index])
+            frequencyTensor.append(1)
+            current = sortedImagePalette[index]
+    #REMOVE THIS FIRST RETURN VALUE:
+    return torch.Tensor(sortedImagePalette), torch.Tensor(imagePalette), torch.Tensor(frequencyTensor)
 
 # Setting parameters
+imagesDirectoryPath = 'testImages/'
+
 num_clusters = 64
 iteration_limit = 1000
 tolerance = 0
 
 PVsAfterDecimal = 10
-saveResults = False
+saveResults = True
+
+# imagesTensor = torch.clamp(torch.load("TRAIN_aquarium.pt"), 0, 1)[15000:15100]
 
 # Converting image file(s) into Tensor([# of files, 3, 256, 256])
-# imagesList = []
-# path = 'testImages/'
-# directory = os.listdir(path)
-# for file in directory:
-#     imagesList.append(transforms.ToTensor()(Image.open(path+file)))
-# imagesTensor = pad_sequence(imagesList).permute(1,0,2,3) #Tensor([# of files, 3, 256, 256])
+imagesList = []
+directory = os.listdir(imagesDirectoryPath)
+imagesSize = (256,256)
+for file in [i for i in directory if i != '.DS_Store']:
+    with Image.open(imagesDirectoryPath + file) as image:
+        if imagesSize == (0,0):
+            imagesSize = (image.size[1],image.size[0])  #Why is it rotated?!?!?!
+        elif imagesSize != (image.size[1],image.size[0]): #Why is it rotated?!?!?!
+            print('Error: images in directory not the same size')
+            exit()
+        imagesList.append(transforms.ToTensor()(image))
+imagesTensor = pad_sequence(imagesList).permute(1,0,2,3) #Tensor([# of files, 3, 256, 256])
 
-imagesTensor = torch.clamp(torch.load("TRAIN_aquarium.pt"), 0, 1)[15000:15100]
-
-# Initializing (mapTensor, paletteTensor) with previous results if they exist, or zeros
-mapTensor = torch.zeros(imagesTensor.size(0), 256**2)
+# Initializing (mapTensor, paletteTensor) with previous results if they exist, or empty
+mappings = []
 paletteTensor = torch.ones(imagesTensor.size(0), num_clusters, 3)
 startingIndex = 0
+losses = [0 for _ in range(imagesTensor.size(0))]
 if os.path.exists('saved.pt'):
     userInput = ''
     while not userInput in ['c','r']:
         userInput = input('There are quantized images saved from the previous run.  Continue working where the previous run left off(c) or reset(r)?\n>>> ')
     if userInput == 'c':
-        mapTensor, paletteTensor = torch.load('saved.pt')
+        quantizedImagesTensor, losses = torch.load('saved.pt')
         if len(torch.nonzero(paletteTensor[imagesTensor.size(0)-1] == 1)) == 3*num_clusters: #if the last image is all ones still
-            startingIndex = min([i for i in range(mapTensor.size(0)) if mapTensor[i].unique().tolist() == [0]])
+            startingIndex = min([i for i in range(mappings.size(0)) if mappings[i].unique().tolist() == [0]])
         else:
             startingIndex = imagesTensor.size(0)
     else:
         os.remove('saved.pt')
 
+
 # Performing chosen method to get mappings and palette
+quantizedImagesTensor = torch.zeros(imagesTensor.size())
+before_time = current_milli_time()
 for image in range(startingIndex, imagesTensor.size(0)):
-    PFimage = pixelsForm(imagesTensor[image])
-    mapTensor[image], paletteTensor[image] = kmeans(X=PFimage, num_clusters=num_clusters, distance='euclidean', iteration_limit=iteration_limit, tol=tolerance, image=image)
+    PFimage, imagePalette, frequencyTensor = preprocess(pixelsForm(imagesTensor[image], imagesSize))
+    map, paletteTensor[image] = kmeans(fast_kmeans = True, X = PFimage, imagePalette=imagePalette, frequencyTensor=frequencyTensor, num_clusters=num_clusters, iteration_limit=iteration_limit, tol=tolerance, image=image)
+    mappings.append(map)
+    quantizedImagesTensor[image] = imageForm(pixel_mapping(pixelsForm(imagesTensor[image], imagesSize), paletteTensor[image]), imagesSize)
+    losses[image] = (validLoss(imagesTensor[image], quantizedImagesTensor[image]))
     if saveResults:
-        torch.save((mapTensor, paletteTensor), 'saved.pt') #mapTensor = Tensor(# of images, 256**2), paletteTensor = Tensor(images, # of colors)
-    quantizedImagesTensor = pixel_mapping(mapTensor[image].unsqueeze(0), paletteTensor[image].unsqueeze(0)).squeeze().squeeze(0)
-    print('loss for image %s: %s\n' % (image, round(validLoss(imagesTensor[image], quantizedImagesTensor), PVsAfterDecimal)))
+        torch.save((quantizedImagesTensor, losses), 'saved.pt') #quantizedImagesTensor = tensor(# of files, 3, 256, 256), losses = list of length: # of files
+    print('loss: %s\n%s\n' % (round(losses[image], PVsAfterDecimal), logTime('Total time:', before_time, current_milli_time())))
+
 print('finished k-means for all images. Calculating loss...')
 # imageTensor = imagesTensor[0] #Tensor(3, 256, 256)
 # torch.save(manual(imageTensor,['#101918','#294c3c','#1b3441','#284b66','#576e48','#baab47','#39341d','#604d23','#5c89ae','#d0e1d3']), 'manual.pt')
@@ -93,14 +139,12 @@ print('finished k-means for all images. Calculating loss...')
 # print(palette,palette_ids)
 
 #Pixel mapping and calcuating validation loss
-quantizedImages = pixel_mapping(mapTensor, paletteTensor)
-batchValidLoss = validLoss(imagesTensor, quantizedImages)
-print('validation loss for entire batch: %s\n' % (round(batchValidLoss,PVsAfterDecimal)))
+print('validation loss for entire batch: %s\n%s\n' % (round(sum(losses)/len(losses),PVsAfterDecimal),logTime('Time to complete quantization for all images:', before_time, current_milli_time())))
 
 #Plotting Quantized Images
 if input('display images (y/n)?') == 'y':
     plt.tight_layout()
-    for quantizedImage in range(len(quantizedImages)):
-        plt.imshow((quantizedImages[quantizedImage].permute(1, 2, 0).numpy()*255).astype(np.uint8))
+    for quantizedImage in range(len(quantizedImagesTensor)):
+        plt.imshow((quantizedImagesTensor[quantizedImage].permute(1, 2, 0).numpy()*255).astype(np.uint8))
         plt.show() #imshow puts stff on the plot, show actually displays the plot
         input(f'displaying quantized image {quantizedImage} (enter for next)')

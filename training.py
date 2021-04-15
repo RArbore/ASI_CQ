@@ -12,8 +12,7 @@ print("Random Seed: ", manualSeed)
 random.seed(manualSeed)
 torch.manual_seed(manualSeed)
 
-NUM_AUGS = 0
-DATA_SIZE = 15000 * (NUM_AUGS + 1)
+DATA_SIZE = 15000
 VALID_DATA_SIZE = 100
 BATCH_SIZE = 10
 NUM_EPOCHS = 100
@@ -136,7 +135,7 @@ def SSELoss(output, batch):
     quantized_batch = construct_soft_quantized_images(output, batch)
     return torch.mean((quantized_batch - batch)**2)
 
-def train_model(train_data):
+def train_model(data_names):
     model = CNN()
     # model = resnet.resnet(3, palette * 3)
 
@@ -158,38 +157,54 @@ def train_model(train_data):
 
         epoch_loss = 0
         valid_loss = 0
+
+        train_iters = 0
+        valid_iters = 0
+
         epoch_before_time = current_milli_time()
 
-        for batch in range(NUM_BATCHES):
-            opt.zero_grad()
-            model = model.train()
-            batch_input = train_data[(batch * BATCH_SIZE):((batch + 1) * BATCH_SIZE)].to(device)
+        random.shuffle(data_names)
 
-            output = model(batch_input*2-1)
-            loss = SSELoss(output, batch_input)
-            loss.backward()
-            opt.step()
-            epoch_loss += loss.to(cpu).item() / float(NUM_BATCHES) #average of all the epoch losses in this patch
-            #.item() changes a pytorch tensor to a regular number, only on the CPU, can be expensive
-            if (math.isnan(epoch_loss)):
-                print("NaN!")
+        for name in data_names:
+            train_data = torch.load(name)
+            DATA_SIZE = train_data.size(0) - VALID_DATA_SIZE
+            NUM_BATCHES = int(DATA_SIZE / BATCH_SIZE)
 
-        with torch.no_grad(): #just evaluating it, don't create the graph with .no_grad()
-            model = model.eval()
-            batch_input = train_data[DATA_SIZE:DATA_SIZE+saved_images_per_epoch].to(device)
-            output = model(batch_input)
-            quantized_batch = construct_quantized_images(output, batch_input)
-            batch_input = batch_input.to(cpu)
-            quantized_batch = quantized_batch.to(cpu)
-            for i in range(saved_images_per_epoch):
-                save_image(batch_input[i], folder + "/epoch"+str(epoch+1) + "/original_image_"+str(i)+".png")
-                save_image(quantized_batch[i], folder + "/epoch"+str(epoch+1) + "/quantized_image_"+str(i)+".png")
+            for batch in range(NUM_BATCHES):
+                opt.zero_grad()
+                model = model.train()
+                batch_input = train_data[(batch * BATCH_SIZE):((batch + 1) * BATCH_SIZE)].to(device)
 
-            for valid_batch in range(int(VALID_DATA_SIZE/BATCH_SIZE)):
-                batch_input = train_data[DATA_SIZE + (valid_batch * BATCH_SIZE):DATA_SIZE + ((valid_batch + 1) * BATCH_SIZE)].to(device)
+                output = model(batch_input*2-1)
+                loss = SSELoss(output, batch_input)
+                loss.backward()
+                opt.step()
+                epoch_loss += loss.to(cpu).item()
+                train_iters += 1
+                #.item() changes a pytorch tensor to a regular number, only on the CPU, can be expensive
+                if (math.isnan(epoch_loss)):
+                    print("NaN!")
+
+            with torch.no_grad(): #just evaluating it, don't create the graph with .no_grad()
+                model = model.eval()
+                batch_input = train_data[DATA_SIZE:DATA_SIZE+saved_images_per_epoch].to(device)
                 output = model(batch_input)
                 quantized_batch = construct_quantized_images(output, batch_input)
-                valid_loss += torch.mean((quantized_batch - batch_input)**2).to(cpu).item() / float(VALID_DATA_SIZE/BATCH_SIZE)       
+                batch_input = batch_input.to(cpu)
+                quantized_batch = quantized_batch.to(cpu)
+                for i in range(saved_images_per_epoch):
+                    save_image(batch_input[i], folder + "/epoch"+str(epoch+1) + "/original_image_"+str(i)+".png")
+                    save_image(quantized_batch[i], folder + "/epoch"+str(epoch+1) + "/quantized_image_"+str(i)+".png")
+
+                for valid_batch in range(int(VALID_DATA_SIZE/BATCH_SIZE)):
+                    batch_input = train_data[DATA_SIZE + (valid_batch * BATCH_SIZE):DATA_SIZE + ((valid_batch + 1) * BATCH_SIZE)].to(device)
+                    output = model(batch_input)
+                    quantized_batch = construct_quantized_images(output, batch_input)
+                    valid_loss += torch.mean((quantized_batch - batch_input)**2).to(cpu).item()
+                    valid_iters += 1
+
+        epoch_loss /= train_iters
+        valid_loss /= valid_iters
 
         epoch_after_time = current_milli_time()
         seconds = math.floor((epoch_after_time - epoch_before_time) / 1000)
@@ -236,8 +251,21 @@ if __name__ == "__main__":
 
     print("Loading data...")
 
-    train_data = torch.clamp(torch.load("TRAIN_aquarium.pt"), 0, 1) #(15100, 3, 256, 256)
-    # train_data = torch.cat((torch.load("TRAIN_aquarium.pt"), torch.load("TRAIN_badlands.pt"), torch.load("TRAIN_baseball_field.pt")), dim=0) #TRAIN_x.pt is the data, size: (45000, 3, 256, 256)
+    data_names = [
+        "TRAIN_abbey.pt",
+        "TRAIN_airport_terminal.pt",
+        "TRAIN_alley.pt",
+        "TRAIN_amphitheater.pt",
+        "TRAIN_amusement_park.pt",
+        "TRAIN_aquarium.pt",
+        "TRAIN_aqueduct.pt",
+        "TRAIN_arch.pt",
+        "TRAIN_art_gallery.pt",
+        "TRAIN_art_studio.pt",
+        "TRAIN_assembly_line.pt",
+        "TRAIN_attic.pt",
+        "TRAIN_auditorium.pt",
+    ]
 
     after_time = current_milli_time()
     seconds = math.floor((after_time - before_time) / 1000)
@@ -245,4 +273,4 @@ if __name__ == "__main__":
     seconds = seconds % 60
     print("Data loading took " + str(minutes) + " minute(s) " + str(seconds) + " second(s).")
 
-    model = train_model(train_data)
+    model = train_model(data_names)

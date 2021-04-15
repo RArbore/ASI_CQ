@@ -14,7 +14,7 @@ torch.manual_seed(manualSeed)
 
 DATA_SIZE = 15000
 VALID_DATA_SIZE = 100
-BATCH_SIZE = 10
+BATCH_SIZE = 100
 NUM_EPOCHS = 100
 NUM_BATCHES = int(DATA_SIZE / BATCH_SIZE)
 
@@ -145,6 +145,12 @@ def train_model(data_names):
 
     opt = torch.optim.Adam(model.parameters(), lr=lr, betas=(b1, b2))
 
+    if len(data_names) == 1:
+        train_data = torch.load(data_names[0])
+        indices = list(range(train_data.size(0)))
+        random.shuffle(indices)
+        train_data = train_data[indices]
+
     before_time = current_milli_time()
 
     print("Beginning training")
@@ -166,7 +172,12 @@ def train_model(data_names):
         random.shuffle(data_names)
 
         for name in data_names:
-            train_data = torch.load(name)
+            if not len(data_names) == 1:
+                train_data = torch.load(name)
+                indices = list(range(train_data.size(0)))
+                random.shuffle(indices)
+                train_data = train_data[indices]
+
             DATA_SIZE = train_data.size(0) - VALID_DATA_SIZE
             NUM_BATCHES = int(DATA_SIZE / BATCH_SIZE)
 
@@ -250,19 +261,7 @@ if __name__ == "__main__":
     print("Created session folder " + folder)
 
     data_names = [
-        "TRAIN_abbey.pt",
-        "TRAIN_airport_terminal.pt",
-        "TRAIN_alley.pt",
-        "TRAIN_amphitheater.pt",
-        "TRAIN_amusement_park.pt",
-        "TRAIN_aquarium.pt",
-        "TRAIN_aqueduct.pt",
-        "TRAIN_arch.pt",
-        "TRAIN_art_gallery.pt",
-        "TRAIN_art_studio.pt",
-        "TRAIN_assembly_line.pt",
-        "TRAIN_attic.pt",
-        "TRAIN_auditorium.pt",
+        "TRAIN_DATA.pt"
     ]
 
     model = train_model(data_names)

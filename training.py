@@ -135,7 +135,7 @@ def SSELoss(output, batch):
     quantized_batch = construct_soft_quantized_images(output, batch)
     return torch.mean((quantized_batch - batch)**2)
 
-def train_model(data_names):
+def train_model(data_names, valid_data):
     model = CNN()
     # model = resnet.resnet(3, palette * 3)
 
@@ -150,6 +150,9 @@ def train_model(data_names):
         indices = list(range(train_data.size(0)))
         random.shuffle(indices)
         train_data = train_data[indices]
+    elif valid_data is None:
+        print("You need to specify a validation dataset if you're going to use multiple training .pt files.")
+        exit(1)
 
     before_time = current_milli_time()
 
@@ -178,7 +181,7 @@ def train_model(data_names):
                 random.shuffle(indices)
                 train_data = train_data[indices]
 
-            DATA_SIZE = train_data.size(0) - VALID_DATA_SIZE
+            DATA_SIZE = train_data.size(0)
             NUM_BATCHES = int(DATA_SIZE / BATCH_SIZE)
 
             for batch in range(NUM_BATCHES):
@@ -198,7 +201,7 @@ def train_model(data_names):
 
             with torch.no_grad(): #just evaluating it, don't create the graph with .no_grad()
                 model = model.eval()
-                batch_input = train_data[DATA_SIZE:DATA_SIZE+saved_images_per_epoch].to(device)
+                batch_input = valid_data[DATA_SIZE:DATA_SIZE+saved_images_per_epoch].to(device)
                 output = model(batch_input)
                 quantized_batch = construct_quantized_images(output, batch_input)
                 batch_input = batch_input.to(cpu)
@@ -264,4 +267,4 @@ if __name__ == "__main__":
         "TRAIN_DATA.pt"
     ]
 
-    model = train_model(data_names)
+    model = train_model(data_names, None)

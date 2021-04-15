@@ -2,6 +2,7 @@ from torchvision import transforms
 from PIL import Image
 import numpy as np
 import torch
+import tqdm
 import os
 
 dirs = ["imagesPlaces205_resize/data/vision/torralba/deeplearning/images256/a/abbey",
@@ -21,7 +22,7 @@ dirs = ["imagesPlaces205_resize/data/vision/torralba/deeplearning/images256/a/ab
 
 for dir in dirs:
     tensor_list = []
-    for jpg in os.listdir(dir):
+    for jpg in tqdm.tqdm(os.listdir(dir)):
         if jpg.endswith(".jpg"):
             pil_img = Image.open(dir+"/"+jpg)
             tensor = transforms.ToTensor()(pil_img)

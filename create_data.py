@@ -4,7 +4,20 @@ import numpy as np
 import torch
 import os
 
-dirs = ["imagesPlaces205_resize/data/vision/torralba/deeplearning/images256/a/aquarium"]
+dirs = ["imagesPlaces205_resize/data/vision/torralba/deeplearning/images256/a/abbey",
+        "imagesPlaces205_resize/data/vision/torralba/deeplearning/images256/a/airport_terminal",
+        "imagesPlaces205_resize/data/vision/torralba/deeplearning/images256/a/alley",
+        "imagesPlaces205_resize/data/vision/torralba/deeplearning/images256/a/amphitheater",
+        "imagesPlaces205_resize/data/vision/torralba/deeplearning/images256/a/amusement_park",
+        "imagesPlaces205_resize/data/vision/torralba/deeplearning/images256/a/apartment_building",
+        "imagesPlaces205_resize/data/vision/torralba/deeplearning/images256/a/aquarium",
+        "imagesPlaces205_resize/data/vision/torralba/deeplearning/images256/a/aqueduct",
+        "imagesPlaces205_resize/data/vision/torralba/deeplearning/images256/a/arch",
+        "imagesPlaces205_resize/data/vision/torralba/deeplearning/images256/a/art_gallery",
+        "imagesPlaces205_resize/data/vision/torralba/deeplearning/images256/a/art_studio",
+        "imagesPlaces205_resize/data/vision/torralba/deeplearning/images256/a/assembly_line",
+        "imagesPlaces205_resize/data/vision/torralba/deeplearning/images256/a/attic",
+        "imagesPlaces205_resize/data/vision/torralba/deeplearning/images256/a/auditorium"]
 
 for dir in dirs:
     tensor_list = []

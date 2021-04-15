@@ -53,8 +53,8 @@ def validLoss(original, quantized):
 
 current_milli_time = lambda: int(round(time.time() * 1000))
 
-def logTime(logString, before_time, after_time):
-    seconds = math.floor((after_time - before_time) / 1000)
+def logTime(logString, time_rec):
+    seconds = math.floor((time_rec) / 1000)
     minutes = math.floor(seconds / 60)
     seconds = seconds % 60
     return("%s %s minute(s) %s second(s)." % (logString, str(minutes), str(seconds)))
@@ -72,7 +72,7 @@ def preprocess(image):
             frequencyTensor.append(1)
             current = sortedImagePalette[index]
     #REMOVE THIS FIRST RETURN VALUE:
-    return torch.Tensor(sortedImagePalette), torch.Tensor(imagePalette), torch.Tensor(frequencyTensor)
+    return torch.Tensor(sortedImagePalette).to(device), torch.Tensor(imagePalette).to(device), torch.Tensor(frequencyTensor).to(device)
 
 # Setting parameters
 imagesDirectoryPath = 'testImages/'
@@ -82,7 +82,7 @@ iteration_limit = 1000
 tolerance = 0
 
 PVsAfterDecimal = 10
-saveResults = True
+saveResults = False
 
 # imagesTensor = torch.clamp(torch.load("TRAIN_aquarium.pt"), 0, 1)[15000:15100]
 
@@ -117,34 +117,38 @@ if os.path.exists('saved.pt'):
             startingIndex = imagesTensor.size(0)
     else:
         os.remove('saved.pt')
-
-
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+time_sum = 0.0
+iters = 0.0
 # Performing chosen method to get mappings and palette
 quantizedImagesTensor = torch.zeros(imagesTensor.size())
-before_time = current_milli_time()
 for image in range(startingIndex, imagesTensor.size(0)):
+    before_time = current_milli_time()
     PFimage, imagePalette, frequencyTensor = preprocess(pixelsForm(imagesTensor[image], imagesSize))
-    map, paletteTensor[image] = kmeans(fast_kmeans = True, X = PFimage, imagePalette=imagePalette, frequencyTensor=frequencyTensor, num_clusters=num_clusters, iteration_limit=iteration_limit, tol=tolerance, image=image)
+    map, paletteTensor[image] = kmeans(fast_kmeans = True, X = PFimage, imagePalette=imagePalette, frequencyTensor=frequencyTensor, num_clusters=num_clusters, iteration_limit=iteration_limit, tol=tolerance, image=image, device=device)
+    time_rec = current_milli_time() - before_time
+    print('loss: %s\n%s\n' % (round(losses[image], PVsAfterDecimal), logTime('Total time:', time_rec)))
+    time_sum += time_rec
+    iters += 1.0
     mappings.append(map)
     quantizedImagesTensor[image] = imageForm(pixel_mapping(pixelsForm(imagesTensor[image], imagesSize), paletteTensor[image]), imagesSize)
     losses[image] = (validLoss(imagesTensor[image], quantizedImagesTensor[image]))
     if saveResults:
         torch.save((quantizedImagesTensor, losses), 'saved.pt') #quantizedImagesTensor = tensor(# of files, 3, 256, 256), losses = list of length: # of files
-    print('loss: %s\n%s\n' % (round(losses[image], PVsAfterDecimal), logTime('Total time:', before_time, current_milli_time())))
 
-print('finished k-means for all images. Calculating loss...')
+#print('finished k-means for all images. Calculating loss...')
 # imageTensor = imagesTensor[0] #Tensor(3, 256, 256)
 # torch.save(manual(imageTensor,['#101918','#294c3c','#1b3441','#284b66','#576e48','#baab47','#39341d','#604d23','#5c89ae','#d0e1d3']), 'manual.pt')
 # palette_ids, palette = torch.load('manual.pt')
 # print(palette,palette_ids)
 
 #Pixel mapping and calcuating validation loss
-print('validation loss for entire batch: %s\n%s\n' % (round(sum(losses)/len(losses),PVsAfterDecimal),logTime('Time to complete quantization for all images:', before_time, current_milli_time())))
+#print('validation loss for entire batch: %s\n%s\n' % (round(sum(losses)/len(losses),PVsAfterDecimal),logTime('Average time to complete quantization for each images:', time_sum / iters)))
 
 #Plotting Quantized Images
-if input('display images (y/n)?') == 'y':
-    plt.tight_layout()
-    for quantizedImage in range(len(quantizedImagesTensor)):
-        plt.imshow((quantizedImagesTensor[quantizedImage].permute(1, 2, 0).numpy()*255).astype(np.uint8))
-        plt.show() #imshow puts stff on the plot, show actually displays the plot
-        input(f'displaying quantized image {quantizedImage} (enter for next)')
+#if input('display images (y/n)?') == 'y':
+#    plt.tight_layout()
+#    for quantizedImage in range(len(quantizedImagesTensor)):
+#        plt.imshow((quantizedImagesTensor[quantizedImage].permute(1, 2, 0).numpy()*255).astype(np.uint8))
+#        plt.show() #imshow puts stff on the plot, show actually displays the plot
+#        input(f'displaying quantized image {quantizedImage} (enter for next)')

@@ -46,7 +46,7 @@ def kmeans(
     :param device: (torch.device) device [default: cpu]
     :return: (torch.tensor, torch.tensor) cluster ids, cluster centers
     """
-    print(f'running k-means for image {image} on {device}..')
+    #print(f'running k-means for image {image} on {device}..')
 
     if distance == 'euclidean':
         pairwise_distance_function = pairwise_distance
@@ -68,7 +68,7 @@ def kmeans(
     # import pdb; pdb.set_trace()
 
     iteration = 0
-    tqdm_meter = tqdm(desc='[running kmeans]')
+    #tqdm_meter = tqdm(desc='[running kmeans]')
     while True:
         dis = pairwise_distance_function(X, initial_state)
 
@@ -91,13 +91,13 @@ def kmeans(
         iteration = iteration + 1
 
         # update tqdm meter
-        tqdm_meter.set_postfix(
-            iteration=f'{iteration}',
-            center_shift=f'{center_shift ** 2:0.6f}',
-            iteration_limit=f'{iteration_limit}',
-            tolerance=f'{tol}'
-        )
-        tqdm_meter.update()
+        #tqdm_meter.set_postfix(
+        #    iteration=f'{iteration}',
+        #    center_shift=f'{center_shift ** 2:0.6f}',
+        #    iteration_limit=f'{iteration_limit}',
+        #    tolerance=f'{tol}'
+        #)
+        #tqdm_meter.update()
         #Added iteration limit
         if center_shift ** 2 <= tol or iteration > iteration_limit:
             break
@@ -119,7 +119,7 @@ def kmeans_predict(
     :param device: (torch.device) device [default: 'cpu']
     :return: (torch.tensor) cluster ids
     """
-    print(f'predicting on {device}..')
+    #print(f'predicting on {device}..')
 
     if distance == 'euclidean':
         pairwise_distance_function = pairwise_distance

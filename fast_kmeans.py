@@ -16,18 +16,18 @@ def initialize(X, num_clusters):
     num_samples = len(X)
 
     # ORIGINAL METHOD FOR CREATING initial_state:
-    # indices = np.random.choice(num_samples, num_clusters, replace=False)
-    # initial_state = X[indices]
+    indices = np.random.choice(num_samples, num_clusters, replace=False)
+    initial_state = X[indices]
 
     # CREATING initial_state DETERMINISTICALLY INSTEAD:
-    initial_state = []
-    index = -1
-    while len(initial_state) < num_clusters:
-        index += 1
-        if X[index].tolist() in initial_state:
-            continue
-        initial_state.append(X[index].tolist())
-    initial_state = torch.tensor(initial_state)
+    # initial_state = []
+    # index = -1
+    # while len(initial_state) < num_clusters:
+    #     index += 1
+    #     if X[index].tolist() in initial_state:
+    #         continue
+    #     initial_state.append(X[index].tolist())
+    # initial_state = torch.tensor(initial_state)
 
     return initial_state
 

@@ -249,8 +249,6 @@ if __name__ == "__main__":
 
     print("Created session folder " + folder)
 
-    print("Loading data...")
-
     data_names = [
         "TRAIN_abbey.pt",
         "TRAIN_airport_terminal.pt",
@@ -266,11 +264,5 @@ if __name__ == "__main__":
         "TRAIN_attic.pt",
         "TRAIN_auditorium.pt",
     ]
-
-    after_time = current_milli_time()
-    seconds = math.floor((after_time - before_time) / 1000)
-    minutes = math.floor(seconds / 60)
-    seconds = seconds % 60
-    print("Data loading took " + str(minutes) + " minute(s) " + str(seconds) + " second(s).")
 
     model = train_model(data_names)

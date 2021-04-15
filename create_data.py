@@ -30,6 +30,7 @@ for dir in dirs:
                 tensor = torch.cat((tensor, tensor, tensor), dim=0)
             tensor_list.append(tensor)
 
-    data = torch.stack(tensor_list).float().detach()
-    print(data.size())
-    torch.save(data, "TRAIN_"+dir.split("/")[7]+".pt")
+    if tensor_list:
+        data = torch.stack(tensor_list).float().detach()
+        print(data.size())
+        torch.save(data, "TRAIN_"+dir.split("/")[7]+".pt")

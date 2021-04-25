@@ -150,6 +150,8 @@ def train_model(data_names, valid_data):
         indices = list(range(train_data.size(0)))
         random.shuffle(indices)
         train_data = train_data[indices]
+        valid_data = train_data[train_data.size(0)-VALID_DATA_SIZE:]
+        train_data = train_data[:train_data.size(0)-VALID_DATA_SIZE]
     elif valid_data is None:
         print("You need to specify a validation dataset if you're going to use multiple training .pt files.")
         exit(1)
@@ -201,7 +203,7 @@ def train_model(data_names, valid_data):
 
             with torch.no_grad(): #just evaluating it, don't create the graph with .no_grad()
                 model = model.eval()
-                batch_input = valid_data[DATA_SIZE:DATA_SIZE+saved_images_per_epoch].to(device)
+                batch_input = valid_data[:saved_images_per_epoch].to(device)
                 output = model(batch_input)
                 quantized_batch = construct_quantized_images(output, batch_input)
                 batch_input = batch_input.to(cpu)
@@ -211,7 +213,7 @@ def train_model(data_names, valid_data):
                     save_image(quantized_batch[i], folder + "/epoch"+str(epoch+1) + "/quantized_image_"+str(i)+".png")
 
                 for valid_batch in range(int(VALID_DATA_SIZE/BATCH_SIZE)):
-                    batch_input = train_data[DATA_SIZE + (valid_batch * BATCH_SIZE):DATA_SIZE + ((valid_batch + 1) * BATCH_SIZE)].to(device)
+                    batch_input = valid_data[valid_batch * BATCH_SIZE:(valid_batch + 1) * BATCH_SIZE].to(device)
                     output = model(batch_input)
                     quantized_batch = construct_quantized_images(output, batch_input)
                     valid_loss += torch.mean((quantized_batch - batch_input)**2).to(cpu).item()

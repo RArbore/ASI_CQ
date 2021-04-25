@@ -14,7 +14,9 @@ paths = f.read().split("\n")[:-1]
 tensor_list = []
 
 for i in tqdm.tqdm(range(DATA_SIZE)):
-    pil_img = Image.open("images256/"+random.choice(paths))
+    choice = random.choice(paths)
+    paths.remove(choice)
+    pil_img = Image.open("images256/"+choice)
     tensor = transforms.ToTensor()(pil_img)
     if (tensor.size(0) == 1):
         tensor = torch.cat((tensor, tensor, tensor), dim=0)

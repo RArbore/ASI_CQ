@@ -1,15 +1,16 @@
 import matplotlib.pyplot as plt
 import sys
 
-NUM_TRIALS = 15
+NUM_TRIALS = 2
+TRIAL_OFFSET = 15
 
 cm = plt.get_cmap('gist_rainbow')
 fig = plt.figure()
 ax = fig.add_subplot(111)
 ax.set_prop_cycle('color', [cm(1.*i/NUM_TRIALS) for i in range(NUM_TRIALS)])
 
-for t in range(14, 15):
-    path = "trial"+str(t+1)+"/during_training_performance.txt"
+for t in range(NUM_TRIALS):
+    path = "trial"+str(t+1+TRIAL_OFFSET)+"/during_training_performance.txt"
 
     f = open(path)
     read = f.read()

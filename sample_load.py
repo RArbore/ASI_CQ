@@ -13,8 +13,8 @@ f = open("paths.txt", "r")
 paths = f.read().split("\n")[:-1]
 tensor_list = []
 
-for i in range(DATA_SIZE):
-    pil_img = Image.open(random.choice(paths))
+for i in tqdm.tqdm(range(DATA_SIZE)):
+    pil_img = Image.open("images256/"+random.choice(paths))
     tensor = transforms.ToTensor()(pil_img)
     if (tensor.size(0) == 1):
         tensor = torch.cat((tensor, tensor, tensor), dim=0)

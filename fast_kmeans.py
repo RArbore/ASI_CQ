@@ -71,7 +71,7 @@ def kmeans(
     # import pdb; pdb.set_trace()
 
     iteration = 0
-    tqdm_meter = tqdm(desc='[running kmeans]')
+    # tqdm_meter = tqdm(desc='[running kmeans]')
 
     times = []
 
@@ -86,11 +86,10 @@ def kmeans(
         initial_state_pre = initial_state.clone()
 
         for index in range(num_clusters):
-            selected_indecies = torch.nonzero(choice_cluster == index).squeeze().to(device) #The indecies of all the pixels that are closest to cluster int(index)
-
-            selected = torch.index_select(X, 0, selected_indecies) #Just X[n][:] for n = all the values in selected.  Returns tensor with only the pixels that are closes to cluster int(index)
+            selected_indicies = torch.nonzero(choice_cluster == index).squeeze().to(device) #The indecies of all the pixels that are closest to cluster int(index)
+            selected = torch.index_select(X, 0, selected_indicies) #Just X[n][:] for n = all the values in selected.  Returns tensor with only the pixels that are closes to cluster int(index)
             if fast_kmeans:
-                selected_frequencies = torch.index_select(frequencyTensor, 0, selected_indecies)
+                selected_frequencies = torch.index_select(frequencyTensor, 0, selected_indicies)
                 initial_state[index] = (selected*selected_frequencies.reshape(-1,1)).mean(dim=0)*selected.size(0)/torch.sum(selected_frequencies)
             else:
                 initial_state[index] = selected.mean(dim=0)
@@ -103,13 +102,13 @@ def kmeans(
         iteration = iteration + 1
 
         # update tqdm meter
-        tqdm_meter.set_postfix(
-            iteration=f'{iteration}',
-            center_shift=f'{center_shift ** 2:0.6f}',
-            iteration_limit=f'{iteration_limit}',
-            tolerance=f'{tol}'
-        )
-        tqdm_meter.update()
+       # tqdm_meter.set_postfix(
+       #     iteration=f'{iteration}',
+       #     center_shift=f'{center_shift ** 2:0.6f}',
+       #     iteration_limit=f'{iteration_limit}',
+        #    tolerance=f'{tol}'
+            #)
+        #tqdm_meter.update()
 
         times.append(current_milli_time() - start_time)
 

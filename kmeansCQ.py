@@ -75,7 +75,7 @@ def preprocess(image):
     return torch.Tensor(sortedImagePalette).to(device), torch.Tensor(imagePalette).to(device), torch.Tensor(frequencyTensor).to(device)
 
 # Setting parameters
-imagesDirectoryPath = 'testImages/'
+imagesDirectoryPath = 'imagesPlaces205_resize/data/vision/torralba/deeplearning/images256/a/aquarium/'
 
 num_clusters = 64
 iteration_limit = 1000
@@ -123,8 +123,8 @@ iters = 0.0
 # Performing chosen method to get mappings and palette
 quantizedImagesTensor = torch.zeros(imagesTensor.size())
 for image in range(startingIndex, imagesTensor.size(0)):
-    before_time = current_milli_time()
     PFimage, imagePalette, frequencyTensor = preprocess(pixelsForm(imagesTensor[image], imagesSize))
+    before_time = current_milli_time()
     map, paletteTensor[image] = kmeans(fast_kmeans = True, X = PFimage, imagePalette=imagePalette, frequencyTensor=frequencyTensor, num_clusters=num_clusters, iteration_limit=iteration_limit, tol=tolerance, image=image, device=device)
     time_rec = current_milli_time() - before_time
     print('loss: %s\n%s\n' % (round(losses[image], PVsAfterDecimal), logTime('Total time:', time_rec)))
@@ -135,6 +135,8 @@ for image in range(startingIndex, imagesTensor.size(0)):
     losses[image] = (validLoss(imagesTensor[image], quantizedImagesTensor[image]))
     if saveResults:
         torch.save((quantizedImagesTensor, losses), 'saved.pt') #quantizedImagesTensor = tensor(# of files, 3, 256, 256), losses = list of length: # of files
+    if (iters > 500):
+        break
 
 print(time_sum/(iters*1000), "seconds on average")
 #print('finished k-means for all images. Calculating loss...')

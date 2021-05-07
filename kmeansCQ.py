@@ -75,7 +75,7 @@ def preprocess(image):
     return torch.Tensor(sortedImagePalette).to(device), torch.Tensor(imagePalette).to(device), torch.Tensor(frequencyTensor).to(device)
 
 # Setting parameters
-imagesDirectoryPath = 'imagesPlaces205_resize/data/vision/torralba/deeplearning/images256/a/aquarium/'
+imagesDirectoryPath = 'images256/a/aquarium/'
 
 num_clusters = 64
 iteration_limit = 1000

@@ -136,7 +136,7 @@ for image in range(startingIndex, imagesTensor.size(0)):
     if saveResults:
         torch.save((quantizedImagesTensor, losses), 'saved.pt') #quantizedImagesTensor = tensor(# of files, 3, 256, 256), losses = list of length: # of files
 
-print(time_sum/iters, "seconds on average")
+print(time_sum/(iters*1000), "seconds on average")
 #print('finished k-means for all images. Calculating loss...')
 # imageTensor = imagesTensor[0] #Tensor(3, 256, 256)
 # torch.save(manual(imageTensor,['#101918','#294c3c','#1b3441','#284b66','#576e48','#baab47','#39341d','#604d23','#5c89ae','#d0e1d3']), 'manual.pt')

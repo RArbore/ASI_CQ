@@ -1,4 +1,5 @@
 from torchvision import transforms
+import maxout
 import random
 import resnet
 import torch
@@ -138,6 +139,7 @@ def SSELoss(output, batch):
 def train_model(data_names, valid_data):
     model = CNN()
     # model = resnet.resnet(3, palette * 3)
+    # model = maxout.MaxoutCNN()
 
     current_milli_time = lambda: int(round(time.time() * 1000))
 

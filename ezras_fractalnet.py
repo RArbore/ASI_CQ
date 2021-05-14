@@ -366,9 +366,9 @@ class CIFARFractalNet(nn.Module): #Model class
 
     #Declaring linear layers
         self.linear = nn.Sequential(
-            nn.Linear(32768, 2048),
+            nn.Linear(2048, 512),
             nn.ReLU(True),
-            nn.Linear(2048, self.num_classes),
+            nn.Linear(512, self.num_classes),
             nn.Tanh(),
         )
 

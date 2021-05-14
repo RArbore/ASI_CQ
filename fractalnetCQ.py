@@ -17,4 +17,8 @@ def create_fractalnet(nf, paletteSize):
 
 
     model = ezras_fractalnet.CIFARFractalNet(channels, num_columns, dropout_probs, loc_drop_prob, glob_drop_ratio, paletteSize)
+    model(torch.rand(1, 3, 256, 256))
     return model
+
+if __name__ == "__main__":
+    create_fractalnet(16, 64)

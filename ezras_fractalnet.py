@@ -369,6 +369,7 @@ class CIFARFractalNet(nn.Module): #Model class
             nn.Linear(32768, 2048),
             nn.ReLU(True),
             nn.Linear(2048, self.num_classes),
+            nn.Tanh(),
         )
 
         self._init_params()
@@ -388,7 +389,7 @@ class CIFARFractalNet(nn.Module): #Model class
         x = self.conv(x, glob_num_columns=glob_num_columns)  #Feeds through convolutional layers
         x = x.view(x.size(0), -1)
         x = self.linear(x)  #Feeds through linear layers
-        return x
+        return (x+1)/2
 
 
 def get_fractalnet_cifar(num_classes,

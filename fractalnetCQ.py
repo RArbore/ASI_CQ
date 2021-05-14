@@ -16,5 +16,5 @@ def create_fractalnet(nf, paletteSize):
     # glob_drop_ratio = 0.5
 
 
-    model = ezras_fractalnet.CIFARFractalNet(channels, num_columns, dropout_probs, loc_drop_prob, glob_drop_ratio, paletteSize).to(device)
+    model = ezras_fractalnet.CIFARFractalNet(channels, num_columns, dropout_probs, loc_drop_prob, glob_drop_ratio, paletteSize)
     return model

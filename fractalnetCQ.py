@@ -2,7 +2,7 @@ import torch
 import ezras_fractalnet
 
 def create_fractalnet(nf, paletteSize):
-    channels = [nf, nf*2, nf*4, nf*8]
+    channels = [nf/16, nf/8, nf/4, nf/2]
     num_columns = 4  #Just because thats the example they used in https://arxiv.org/pdf/1605.07648.pdf
     dropout_probs = [0.5, 0.5, 0.5, 0.5]
     loc_drop_prob = 0.5

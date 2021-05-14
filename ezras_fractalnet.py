@@ -10,8 +10,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.init as init
-from .common import ParametricSequential
-
 
 class DropConvBlock(nn.Module):
     """
@@ -302,6 +300,18 @@ class FractalUnit(nn.Module):
         x = self.pool(x)
         return x
 
+class ParametricSequential(nn.Sequential):
+    """
+    A sequential container for modules with parameters.
+    Modules will be executed in the order they are added.
+    """
+    def __init__(self, *args):
+        super(ParametricSequential, self).__init__(*args)
+
+    def forward(self, x, **kwargs):
+        for module in self._modules.values():
+            x = module(x, **kwargs)
+        return x
 
 class CIFARFractalNet(nn.Module): #Model class
     """
@@ -355,13 +365,15 @@ class CIFARFractalNet(nn.Module): #Model class
             in_channels = out_channels
 
     #Declaring linear layers
-        self.linear = nn.Linear(
-            in_features=in_channels,
-            out_features=self.num_classes)
+        self.linear = nn.Sequential(
+            nn.Linear(32768, 2048),
+            nn.ReLU(True),
+            nn.Linear(2048, self.num_classes),
+        )
 
         self._init_params()
 
-    #No idea what this does
+    #Initialize parameters of model
     def _init_params(self):
         for name, module in self.named_modules():
             if isinstance(module, nn.Conv2d):

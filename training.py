@@ -1,4 +1,5 @@
 from torchvision import transforms
+import fractalnetCQ
 import maxout
 import random
 import resnet
@@ -137,9 +138,10 @@ def SSELoss(output, batch):
     return torch.mean((quantized_batch - batch)**2)
 
 def train_model(data_names, valid_data):
-    model = CNN()
+    # model = CNN()
     # model = resnet.resnet(3, palette * 3)
     # model = maxout.MaxoutCNN()
+    model = fractalnetCQ.create_fractalnet(nf, palette)
 
     current_milli_time = lambda: int(round(time.time() * 1000))
 
@@ -268,7 +270,7 @@ if __name__ == "__main__":
     print("Created session folder " + folder)
 
     data_names = [
-        "TRAIN_DATA.pt"
+        "TRAIN_aquarium.pt"
     ]
 
     model = train_model(data_names, None)
